@@ -6,15 +6,23 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
+ *
  * Created by nikhi_000 on 1/27/2018.
  */
 
@@ -51,7 +59,7 @@ public class loadData_Server extends AppCompatActivity
         @Override
         protected String doInBackground(String... strings) {
 
-            String url_US_Events = "https://app.ticketmaster.com/discovery/v2/events.json?countryCode=US&apikey=7J8pOipo9RjqHiHS4Ws2WoQZ6EJgeNMV";
+            String url_US_Events = "https://app.ticketmaster.com/discovery/v2/events.json?postalCode="+zipCode+"&apikey=NAuywMRiMdz02hIZwUgbzF0tn8JBfs9b";
 
             try {
                 url = new URL(url_US_Events);
@@ -62,8 +70,7 @@ public class loadData_Server extends AppCompatActivity
             try {
                 connection = (HttpURLConnection)url.openConnection();
                 connection.setRequestMethod("GET");
-                connection.setDoOutput(true);
-
+                //connection.setDoOutput(true);
                 connection.connect();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -84,7 +91,7 @@ public class loadData_Server extends AppCompatActivity
                     while((line = br.readLine()) != null){
                         result.append(line);
                     }
-
+                    Log.e("the Result (per Line): "," "+result);
                     return(result.toString());
                 }
                 else return ("UNSUCCESSFUL");
@@ -100,8 +107,39 @@ public class loadData_Server extends AppCompatActivity
 
         @Override
         protected void onPostExecute(String result){
+            List<String> eventNames = new ArrayList<String>();
+            List<String> genre = new ArrayList<String>();
+            List<dateDuration> duration = new ArrayList<dateDuration>();
+
+            try {
+                JSONObject jsonObject = new JSONObject(result);
+                JSONObject jsonObject1 = jsonObject.getJSONObject("_embedded");
+                JSONArray jsonArray = jsonObject1.getJSONArray("events");
+
+                for(int i = 0; i < jsonArray.length(); i++){
+                    dateDuration dateDuration = new dateDuration();
+                    JSONObject obj = jsonArray.getJSONObject(i);
+                    eventNames.add(obj.getString("name"));
+                    JSONArray objArray = obj.getJSONArray("classifications");
+                    genre.add(objArray.getJSONObject(2).getString("genre"));
+
+                    JSONObject salesObj = obj.getJSONObject("sales");
+                    JSONObject publicObj = salesObj.getJSONObject("public");
+                    dateDuration.startDate = publicObj.getString("startDateTime");
+                    dateDuration.endDate = publicObj.getString("endDateTime");
+                    duration.add(dateDuration);
+                }
 
 
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            Intent intent = new Intent(loadData_Server.this, Preferences_Screen.class);
+            intent.putExtra("EventNames", (Serializable) eventNames);
+            intent.putExtra("Genre", (Serializable) genre);
+            intent.putExtra("Duration", (Serializable) duration);
+            startActivity(intent);
         }
     }
 
